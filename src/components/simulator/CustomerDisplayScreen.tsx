@@ -12,8 +12,15 @@ import {
   Bell, 
   Sparkles, 
   ShoppingBag, 
-  ArrowRight,
-  Utensils
+  ArrowRight, 
+  Utensils,
+  ExternalLink,
+  Copy,
+  Check,
+  Monitor,
+  Cast,
+  ArrowLeft,
+  X
 } from 'lucide-react';
 import { OrderEntity, OrderStatus } from '../../types/pos';
 import { formatCentimesToEuro, formatTimeAgo } from '../../utils/formatters';
@@ -21,18 +28,44 @@ import { formatCentimesToEuro, formatTimeAgo } from '../../utils/formatters';
 interface CustomerDisplayScreenProps {
   orders: OrderEntity[];
   onOrderStatusUpdated?: (orderId: string, newStatus: OrderStatus) => void;
+  isStandalone?: boolean;
+  onExitStandalone?: () => void;
 }
 
 export const CustomerDisplayScreen: React.FC<CustomerDisplayScreenProps> = ({
   orders,
-  onOrderStatusUpdated
+  onOrderStatusUpdated,
+  isStandalone = false,
+  onExitStandalone
 }) => {
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [searchTicket, setSearchTicket] = useState('');
   const [lastReadyOrderNumber, setLastReadyOrderNumber] = useState<number | null>(null);
+  const [isPopoutModalOpen, setIsPopoutModalOpen] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
   const screenRef = useRef<HTMLDivElement>(null);
+
+  // Standalone TV URL computation
+  const getStandaloneUrl = () => {
+    if (typeof window === 'undefined') return '';
+    const base = window.location.origin + window.location.pathname;
+    return `${base}?display=tv`;
+  };
+
+  const handleOpenStandaloneWindow = () => {
+    const url = getStandaloneUrl();
+    window.open(url, 'FastFoodCustomerTV', 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no');
+    setIsPopoutModalOpen(false);
+  };
+
+  const handleCopyUrl = () => {
+    const url = getStandaloneUrl();
+    navigator.clipboard.writeText(url);
+    setCopiedUrl(true);
+    setTimeout(() => setCopiedUrl(false), 2500);
+  };
 
   // Audio Chime using Web Audio API (Synthesizes a pleasant fast-food pickup ding-dong)
   const playChime = () => {
@@ -144,10 +177,28 @@ export const CustomerDisplayScreen: React.FC<CustomerDisplayScreenProps> = ({
           </div>
         </div>
 
-        {/* Time, Sound Toggle, Fullscreen */}
-        <div className="flex items-center gap-3">
-          <div className="px-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-amber-400 font-mono font-bold text-base shadow-inner flex items-center gap-2">
-            <Clock className="w-4 h-4 text-slate-500" />
+        {/* Time, Sound Toggle, Popout & Fullscreen */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Standalone status indicator */}
+          {isStandalone ? (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="hidden sm:inline">Écran Déporté Autonome</span>
+              <span className="sm:hidden">Déporté TV</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsPopoutModalOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs shadow-lg shadow-amber-500/20 active:scale-95 transition-all cursor-pointer"
+            >
+              <ExternalLink className="w-4 h-4" />
+              <span>DÉPORTER SUR 2ÈME ÉCRAN / TV</span>
+            </button>
+          )}
+
+          <div className="px-3.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-amber-400 font-mono font-bold text-sm shadow-inner flex items-center gap-2">
+            <Clock className="w-3.5 h-3.5 text-slate-500" />
             <span>{currentTime}</span>
           </div>
 
@@ -158,22 +209,22 @@ export const CustomerDisplayScreen: React.FC<CustomerDisplayScreenProps> = ({
               if (!soundEnabled) playChime();
             }}
             title={soundEnabled ? 'Désactiver le carillon sonore' : 'Activer le carillon sonore'}
-            className={`p-2.5 rounded-xl border transition-all ${
+            className={`p-2 rounded-xl border transition-all ${
               soundEnabled
                 ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 hover:bg-amber-500/30'
                 : 'bg-slate-900 text-slate-500 border-slate-800 hover:text-slate-300'
             }`}
           >
-            {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+            {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
           </button>
 
           <button
             type="button"
             onClick={playChime}
             title="Tester le carillon audio de restaurant"
-            className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition-all"
+            className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition-all"
           >
-            <Bell className="w-4 h-4 text-amber-400" />
+            <Bell className="w-3.5 h-3.5 text-amber-400" />
             <span>Tester Son</span>
           </button>
 
@@ -181,10 +232,21 @@ export const CustomerDisplayScreen: React.FC<CustomerDisplayScreenProps> = ({
             type="button"
             onClick={toggleFullscreen}
             title={isFullscreen ? 'Quitter le mode plein écran' : 'Mode Plein Écran pour TV'}
-            className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all"
+            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all"
           >
-            {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
+
+          {isStandalone && onExitStandalone && (
+            <button
+              type="button"
+              onClick={onExitStandalone}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition-all"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Retour Caisse</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -498,6 +560,116 @@ export const CustomerDisplayScreen: React.FC<CustomerDisplayScreenProps> = ({
                 #{o.numeroCommandeJour}
               </span>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: DEPORT ONTO SECONDARY SCREEN / TV */}
+      {isPopoutModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-6 shadow-2xl">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-slate-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-rose-600 text-white flex items-center justify-center shadow-lg shadow-amber-500/20">
+                  <Monitor className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg sm:text-xl font-bold text-white">
+                    Déporter sur un 2ème Écran ou TV
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Affichage autonome dédié pour comptoir et salle de restaurant
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPopoutModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Quick Action Button */}
+            <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-500/15 via-slate-950 to-slate-950 border border-amber-500/30 text-center space-y-3">
+              <div className="text-xs text-amber-300 font-semibold">
+                Vous avez un 2ème écran branché en HDMI / DisplayPort / USB-C ?
+              </div>
+              <button
+                type="button"
+                onClick={handleOpenStandaloneWindow}
+                className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm shadow-xl shadow-amber-500/20 flex items-center justify-center gap-2.5 transition-all active:scale-98 cursor-pointer"
+              >
+                <ExternalLink className="w-5 h-5" />
+                <span>Ouvrir la Fenêtre Déportée Immédiatement</span>
+              </button>
+              <p className="text-[11px] text-slate-400">
+                Ouvre une fenêtre épurée sans barre de menu, prête à être glissée sur votre 2ème moniteur.
+              </p>
+            </div>
+
+            {/* Direct URL for Smart TV or Tablet */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                <Cast className="w-4 h-4 text-amber-400" />
+                <span>URL directe pour Smart TV ou Tablette autonome :</span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={getStandaloneUrl()}
+                  className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-300 font-mono focus:outline-none select-all"
+                />
+                <button
+                  type="button"
+                  onClick={handleCopyUrl}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    copiedUrl
+                      ? 'bg-emerald-500 text-slate-950 font-black shadow-md shadow-emerald-500/20'
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
+                  }`}
+                >
+                  {copiedUrl ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  <span>{copiedUrl ? 'Copié !' : 'Copier'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Step by step guide */}
+            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2.5 text-xs">
+              <div className="font-bold text-slate-300 flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span>Comment ça fonctionne en restaurant :</span>
+              </div>
+              <ul className="space-y-2 text-slate-400 text-[11px] leading-relaxed">
+                <li className="flex items-start gap-2">
+                  <span className="w-4 h-4 rounded-full bg-slate-800 text-amber-400 font-bold flex items-center justify-center shrink-0 text-[10px]">1</span>
+                  <span>Ouvrez la fenêtre déportée et glissez-la sur votre moniteur client ou téléviseur.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-4 h-4 rounded-full bg-slate-800 text-amber-400 font-bold flex items-center justify-center shrink-0 text-[10px]">2</span>
+                  <span>Appuyez sur la touche <strong>F11</strong> de votre clavier pour passer en plein écran total.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-4 h-4 rounded-full bg-slate-800 text-amber-400 font-bold flex items-center justify-center shrink-0 text-[10px]">3</span>
+                  <span>Gardez votre caisse ouverte : la synchronisation inter-fenêtres est <strong>100% en direct</strong>. Dès qu&apos;une commande passe à prête, la TV sonne et l&apos;affiche !</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setIsPopoutModalOpen(false)}
+                className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors"
+              >
+                Fermer
+              </button>
+            </div>
           </div>
         </div>
       )}

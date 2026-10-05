@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { ArchitectureTab } from './components/tabs/ArchitectureTab';
 import { DatabaseSchemaTab } from './components/tabs/DatabaseSchemaTab';
@@ -12,6 +12,7 @@ import { TestPlanTab } from './components/tabs/TestPlanTab';
 import { InteractiveSimulatorTab } from './components/tabs/InteractiveSimulatorTab';
 import { CodeExplorerTab } from './components/tabs/CodeExplorerTab';
 import { DownloadAndTestGuideTab } from './components/tabs/DownloadAndTestGuideTab';
+import { CustomerDisplayScreen } from './components/simulator/CustomerDisplayScreen';
 import { downloadAndroidProjectZip } from './utils/downloadProjectZip';
 import { ANDROID_FILES_TO_EXPORT } from './data/androidSourceFiles';
 import { 
@@ -28,11 +29,72 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('simulator');
   const [isOnline, setIsOnline] = useState<boolean>(true);
 
+  // Check if standalone secondary screen mode (TV mode) is requested in URL
+  const [isStandaloneTv, setIsStandaloneTv] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.location.search.includes('display=tv') || 
+           window.location.search.includes('mode=customer') ||
+           window.location.hash.includes('customer-display');
+  });
+
   // Live state for interactive simulator
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [ingredients, setIngredients] = useState<Ingredient[]>(INITIAL_INGREDIENTS);
   const [orders, setOrders] = useState<OrderEntity[]>(INITIAL_ORDERS);
+
+  // Broadcast inter-window channel (instant synchronization between POS on screen 1 and TV on screen 2)
+  const broadcastOrders = (updatedOrders: OrderEntity[]) => {
+    try {
+      const channel = new BroadcastChannel('fastfood_orders_bus');
+      channel.postMessage({ type: 'ORDERS_UPDATED', orders: updatedOrders });
+      channel.close();
+    } catch {}
+    try {
+      localStorage.setItem('fastfood_live_orders', JSON.stringify(updatedOrders));
+    } catch {}
+  };
+
+  useEffect(() => {
+    // Read cached orders if present
+    try {
+      const cached = localStorage.getItem('fastfood_live_orders');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setOrders(parsed);
+        }
+      }
+    } catch {}
+
+    // Listen to inter-tab / inter-window broadcast
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel('fastfood_orders_bus');
+      channel.onmessage = (event) => {
+        if (event.data?.type === 'ORDERS_UPDATED' && Array.isArray(event.data.orders)) {
+          setOrders(event.data.orders);
+        }
+      };
+    } catch {}
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'fastfood_live_orders' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) {
+            setOrders(parsed);
+          }
+        } catch {}
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      channel?.close();
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
 
   const handleAddProduct = (newProd: Product) => {
     setProducts(prev => [newProd, ...prev]);
@@ -115,18 +177,22 @@ export default function App() {
   const pendingSyncCount = syncEvents.filter(e => e.status === 'PENDING').length;
 
   const handleNewOrderCreated = (newOrder: OrderEntity, newEvents: SyncEvent[], newAudit: AuditLog[]) => {
-    setOrders([newOrder, ...orders]);
+    const nextOrders = [newOrder, ...orders];
+    setOrders(nextOrders);
     setSyncEvents([...newEvents, ...syncEvents]);
     setAuditLogs([...newAudit, ...auditLogs]);
+    broadcastOrders(nextOrders);
   };
 
   const handleOrderStatusUpdated = (orderId: string, newStatus: OrderStatus) => {
-    setOrders(prev => prev.map(o => {
+    const nextOrders = orders.map(o => {
       if (o.id === orderId) {
         return { ...o, statut: newStatus };
       }
       return o;
-    }));
+    });
+    setOrders(nextOrders);
+    broadcastOrders(nextOrders);
 
     const statusEvt: SyncEvent = {
       id: `evt-${Date.now()}-status`,
@@ -149,6 +215,23 @@ export default function App() {
       retryCount: e.status === 'PENDING' ? e.retryCount + 1 : e.retryCount
     })));
   };
+
+  // If running in Standalone Secondary Screen Mode (TV / Moniteur Déporté)
+  if (isStandaloneTv) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-8 font-sans selection:bg-amber-500 selection:text-slate-950">
+        <CustomerDisplayScreen
+          orders={orders}
+          onOrderStatusUpdated={handleOrderStatusUpdated}
+          isStandalone={true}
+          onExitStandalone={() => {
+            window.location.search = '';
+            setIsStandaloneTv(false);
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950">
