@@ -1,0 +1,6 @@
+{
+  "name": "FastFood POS Android & Multi-Device System",
+  "description": "Architecture logicielle, schéma de base de données Room SQLite, file de synchronisation offline-first, arborescence multi-modules Android et simulateur interactif de caisse et cuisine.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

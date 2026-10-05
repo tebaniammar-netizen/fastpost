@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">FastFood POS</string>
+    <string name="cash_register_title">Caisse Tactile</string>
+    <string name="kitchen_kds_title">Écran Cuisine KDS</string>
+    <string name="session_open">Session Ouverte</string>
+    <string name="session_closed">Session Clôturée</string>
+    <string name="btn_pay">Encaisser</string>
+    <string name="btn_cancel">Annuler</string>
+    <string name="btn_discount">Remise</string>
+    <string name="currency_symbol">€</string>
+</resources>

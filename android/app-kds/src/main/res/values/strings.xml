@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">FastFood KDS Cuisine</string>
+    <string name="kds_column_received">REÇUES / EN ATTENTE</string>
+    <string name="kds_column_preparing">EN PRÉPARATION</string>
+    <string name="kds_column_ready">PRÊTES AU PASSE</string>
+    <string name="btn_start_prep">Démarrer Prépa ➔</string>
+    <string name="btn_mark_ready">Commande Prête ➔</string>
+    <string name="btn_mark_served">Remise Client ✓</string>
+</resources>
