@@ -33,13 +33,13 @@ export const Header: React.FC<HeaderProps> = ({
   onDirectDownloadZip
 }) => {
   const tabs = [
+    { id: 'simulator', label: '📱 SIMULATEUR TACTILE (Caisse & Cuisine)', icon: Smartphone, highlight: true },
+    { id: 'guide', label: '📦 Télécharger le Projet (.ZIP)', icon: FolderDown, highlight: true },
     { id: 'architecture', label: '1. Architecture & Sync', icon: Layers },
     { id: 'database', label: '2. Schéma Room SQLite', icon: Database },
     { id: 'code', label: '3. Code Source Android', icon: FileCode },
     { id: 'tree', label: '4. Arborescence Modules', icon: FolderTree },
     { id: 'tests', label: '5. Plan de Tests & Qualité', icon: CheckCircle2 },
-    { id: 'simulator', label: '6. Caisse & Écran Cuisine en Direct', icon: Terminal, highlight: true },
-    { id: 'guide', label: '7. Télécharger le Projet (.ZIP)', icon: FolderDown, highlight: true },
   ];
 
   return (

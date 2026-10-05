@@ -25,7 +25,7 @@ import { OrderEntity, Ingredient, SyncEvent, AuditLog, OrderStatus } from './typ
 import { CheckCircle2, Terminal, Code2, Rocket, ArrowRight } from 'lucide-react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<string>('architecture');
+  const [activeTab, setActiveTab] = useState<string>('simulator');
   const [isOnline, setIsOnline] = useState<boolean>(true);
 
   // Live state for interactive simulator
