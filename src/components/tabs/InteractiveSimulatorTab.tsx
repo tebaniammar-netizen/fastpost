@@ -26,7 +26,8 @@ import {
   PackagePlus,
   PackageCheck,
   RotateCcw,
-  Sparkles
+  Sparkles,
+  Tv
 } from 'lucide-react';
 import { 
   Product, 
@@ -49,6 +50,7 @@ import { ProductEditorModal } from '../simulator/ProductEditorModal';
 import { StockAdjustmentModal } from '../simulator/StockAdjustmentModal';
 import { NewIngredientModal } from '../simulator/NewIngredientModal';
 import { NewCategoryModal } from '../simulator/NewCategoryModal';
+import { CustomerDisplayScreen } from '../simulator/CustomerDisplayScreen';
 
 interface InteractiveSimulatorTabProps {
   categories: Category[];
@@ -91,7 +93,7 @@ export const InteractiveSimulatorTab: React.FC<InteractiveSimulatorTabProps> = (
   onUpdateIngredient,
   onDeleteIngredient
 }) => {
-  const [subView, setSubView] = useState<'POS' | 'KDS' | 'STOCKS' | 'SYNC_OUTBOX' | 'AUDIT'>('POS');
+  const [subView, setSubView] = useState<'POS' | 'KDS' | 'CUSTOMER_DISPLAY' | 'STOCKS' | 'SYNC_OUTBOX' | 'AUDIT'>('POS');
   const [selectedCategory, setSelectedCategory] = useState<string>(categories[0]?.id || 'cat-1');
   const [cart, setCart] = useState<CartLineItem[]>([]);
   const [orderType, setOrderType] = useState<OrderType>('SUR_PLACE');
@@ -406,6 +408,20 @@ export const InteractiveSimulatorTab: React.FC<InteractiveSimulatorTabProps> = (
             <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-800 text-amber-400 border border-slate-700">
               {orders.filter(o => o.statut !== 'REMISE' && o.statut !== 'ANNULEE').length}
             </span>
+          </button>
+          <button
+            onClick={() => setSubView('CUSTOMER_DISPLAY')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              subView === 'CUSTOMER_DISPLAY' ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <Tv className="w-4 h-4" />
+            <span>Écran Client (Appel)</span>
+            {orders.filter(o => o.statut === 'PRETE').length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-500 text-slate-950 font-black animate-bounce">
+                {orders.filter(o => o.statut === 'PRETE').length}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setSubView('STOCKS')}
@@ -888,6 +904,14 @@ export const InteractiveSimulatorTab: React.FC<InteractiveSimulatorTabProps> = (
             </div>
           </div>
         </div>
+      )}
+
+      {/* VIEW 2.5: ÉCRAN D'APPEL CLIENTS & SUIVI */}
+      {subView === 'CUSTOMER_DISPLAY' && (
+        <CustomerDisplayScreen
+          orders={orders}
+          onOrderStatusUpdated={onOrderStatusUpdated}
+        />
       )}
 
       {/* VIEW 3: GESTION DES STOCKS & RECETTES */}
