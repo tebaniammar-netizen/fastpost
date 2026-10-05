@@ -18,7 +18,15 @@ import {
   Lock, 
   ArrowRight,
   Flame,
-  UserCheck
+  UserCheck,
+  Search,
+  Pencil,
+  PlusCircle,
+  Boxes,
+  PackagePlus,
+  PackageCheck,
+  RotateCcw,
+  Sparkles
 } from 'lucide-react';
 import { 
   Product, 
@@ -27,18 +35,23 @@ import {
   Ingredient, 
   SyncEvent, 
   AuditLog, 
-  OrderType,
-  PaymentMethod,
-  OrderStatus
+  OrderType, 
+  PaymentMethod, 
+  OrderStatus,
+  Category 
 } from '../../types/pos';
 import { 
   formatCentimesToEuro, 
   formatTimeAgo, 
   getStatusBadgeColor 
 } from '../../utils/formatters';
+import { ProductEditorModal } from '../simulator/ProductEditorModal';
+import { StockAdjustmentModal } from '../simulator/StockAdjustmentModal';
+import { NewIngredientModal } from '../simulator/NewIngredientModal';
+import { NewCategoryModal } from '../simulator/NewCategoryModal';
 
 interface InteractiveSimulatorTabProps {
-  categories: any[];
+  categories: Category[];
   products: Product[];
   ingredients: Ingredient[];
   orders: OrderEntity[];
@@ -49,6 +62,13 @@ interface InteractiveSimulatorTabProps {
   onOrderStatusUpdated: (orderId: string, newStatus: OrderStatus) => void;
   onSyncQueueProcessed: () => void;
   onUpdateIngredients: (updated: Ingredient[]) => void;
+  onAddProduct: (newProd: Product) => void;
+  onUpdateProduct: (updated: Product) => void;
+  onDeleteProduct: (productId: string) => void;
+  onAddCategory: (newCat: Category) => void;
+  onAddIngredient: (newIng: Ingredient) => void;
+  onUpdateIngredient: (updated: Ingredient) => void;
+  onDeleteIngredient: (ingredientId: string) => void;
 }
 
 export const InteractiveSimulatorTab: React.FC<InteractiveSimulatorTabProps> = ({
@@ -62,20 +82,38 @@ export const InteractiveSimulatorTab: React.FC<InteractiveSimulatorTabProps> = (
   onNewOrderCreated,
   onOrderStatusUpdated,
   onSyncQueueProcessed,
-  onUpdateIngredients
+  onUpdateIngredients,
+  onAddProduct,
+  onUpdateProduct,
+  onDeleteProduct,
+  onAddCategory,
+  onAddIngredient,
+  onUpdateIngredient,
+  onDeleteIngredient
 }) => {
   const [subView, setSubView] = useState<'POS' | 'KDS' | 'STOCKS' | 'SYNC_OUTBOX' | 'AUDIT'>('POS');
-  const [selectedCategory, setSelectedCategory] = useState<string>('cat-1');
+  const [selectedCategory, setSelectedCategory] = useState<string>(categories[0]?.id || 'cat-1');
   const [cart, setCart] = useState<CartLineItem[]>([]);
   const [orderType, setOrderType] = useState<OrderType>('SUR_PLACE');
   const [discountCentimes, setDiscountCentimes] = useState<number>(0);
   const [customerName, setCustomerName] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   
   // Customization modal state
   const [activeProductForCustomization, setActiveProductForCustomization] = useState<Product | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
   const [linePrepNote, setLinePrepNote] = useState<string>('');
+
+  // Product & Catalog Management Modal state
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
+  // Stock Management Modal state
+  const [isStockModalOpen, setIsStockModalOpen] = useState(false);
+  const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
+  const [isAddIngredientModalOpen, setIsAddIngredientModalOpen] = useState(false);
+  const [isNewCategoryModalOpen, setIsNewCategoryModalOpen] = useState(false);
 
   // Payment modal state
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
@@ -90,6 +128,58 @@ export const InteractiveSimulatorTab: React.FC<InteractiveSimulatorTabProps> = (
   const totalHtCentimes = Math.round(totalTtcCentimes / 1.10);
   const totalTvaCentimes = totalTtcCentimes - totalHtCentimes;
   const cashChangeCentimes = paymentMode === 'ESPECES' ? Math.max(0, cashGivenCentimes - totalTtcCentimes) : 0;
+
+  // Catalog & Product handlers
+  const handleOpenAddProduct = () => {
+    setEditingProduct(null);
+    setIsProductModalOpen(true);
+  };
+
+  const handleOpenEditProduct = (prod: Product, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingProduct(prod);
+    setIsProductModalOpen(true);
+  };
+
+  const handleSaveProduct = (prod: Product) => {
+    const isEdit = !!editingProduct;
+    if (isEdit) {
+      onUpdateProduct(prod);
+    } else {
+      onAddProduct(prod);
+      setSelectedCategory(prod.categorieId);
+    }
+  };
+
+  // Stock management handlers
+  const handleOpenStockModal = (ing: Ingredient) => {
+    setEditingIngredient(ing);
+    setIsStockModalOpen(true);
+  };
+
+  const handleSaveStockAdjustment = (updated: Ingredient, motif: string) => {
+    onUpdateIngredient(updated);
+  };
+
+  const handleQuickStockChange = (ingredientId: string, delta: number) => {
+    const ing = ingredients.find(i => i.id === ingredientId);
+    if (!ing) return;
+    const updated: Ingredient = {
+      ...ing,
+      stockActuel: Math.max(0, ing.stockActuel + delta)
+    };
+    onUpdateIngredient(updated);
+  };
+
+  const handleRestockAllCritical = () => {
+    const updated = ingredients.map(ing => {
+      if (ing.stockActuel <= ing.seuilAlerte) {
+        return { ...ing, stockActuel: ing.stockActuel + 50 };
+      }
+      return ing;
+    });
+    onUpdateIngredients(updated);
+  };
 
   // Open customization modal
   const handleProductClick = (product: Product) => {
@@ -362,54 +452,169 @@ export const InteractiveSimulatorTab: React.FC<InteractiveSimulatorTabProps> = (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Column: Categories + Product Catalog */}
           <div className="lg:col-span-7 space-y-4">
-            {/* Category tabs */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-              {categories.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setSelectedCategory(c.id)}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors border ${
-                    selectedCategory === c.id
-                      ? 'bg-amber-500 text-slate-950 border-amber-500'
-                      : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700'
-                  }`}
-                >
-                  {c.nom}
-                </button>
-              ))}
+            {/* Action Bar: Search & Add Product */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Rechercher un produit (ex: Burger, Frites, Soda...)"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-8 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-2.5 text-xs text-slate-400 hover:text-white"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Add New Product Button */}
+              <button
+                type="button"
+                onClick={handleOpenAddProduct}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs shadow-md shadow-amber-500/10 transition-all active:scale-95 whitespace-nowrap cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Nouveau Produit</span>
+                <span className="sm:hidden">Produit</span>
+              </button>
             </div>
 
-            {/* Product Cards Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {products
-                .filter(p => p.categorieId === selectedCategory)
-                .map((product) => (
-                  <div
-                    key={product.id}
-                    onClick={() => handleProductClick(product)}
-                    className="group bg-slate-900 border border-slate-800 hover:border-amber-500/60 rounded-xl overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:shadow-amber-500/5 flex flex-col justify-between"
+            {/* Category tabs */}
+            {!searchQuery && (
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                {categories.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelectedCategory(c.id)}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors border ${
+                      selectedCategory === c.id
+                        ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-md shadow-amber-500/10'
+                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700'
+                    }`}
                   >
-                    <div className="relative aspect-video w-full bg-slate-950 overflow-hidden">
-                      <img
-                        src={product.imageUrl}
-                        alt={product.nom}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-slate-950/80 backdrop-blur-md text-amber-400 font-bold text-xs font-mono">
-                        {formatCentimesToEuro(product.prixBaseCentimes)}
-                      </span>
+                    {c.nom}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setIsNewCategoryModalOpen(true)}
+                  title="Ajouter une nouvelle catégorie"
+                  className="px-2.5 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-amber-400 border border-dashed border-slate-700 hover:border-amber-500/50 transition-colors flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">Catégorie</span>
+                </button>
+              </div>
+            )}
+
+            {/* Product Cards Grid */}
+            {(() => {
+              const displayProducts = products.filter(p => {
+                if (searchQuery.trim()) {
+                  const q = searchQuery.toLowerCase();
+                  return p.nom.toLowerCase().includes(q) || p.description.toLowerCase().includes(q);
+                }
+                return p.categorieId === selectedCategory;
+              });
+
+              if (displayProducts.length === 0) {
+                return (
+                  <div className="p-8 rounded-2xl bg-slate-900/60 border border-slate-800 text-center space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto text-slate-400">
+                      <Boxes className="w-6 h-6" />
                     </div>
-                    <div className="p-3">
-                      <h4 className="text-xs sm:text-sm font-bold text-white group-hover:text-amber-400 transition-colors line-clamp-1">
-                        {product.nom}
-                      </h4>
-                      <p className="text-[11px] text-slate-400 line-clamp-2 mt-1">
-                        {product.description}
+                    <div>
+                      <h4 className="text-sm font-bold text-white">Aucun produit dans cette sélection</h4>
+                      <p className="text-xs text-slate-400 mt-1">
+                        {searchQuery ? `Aucun résultat pour "${searchQuery}".` : 'Cette catégorie est actuellement vide.'}
                       </p>
                     </div>
+                    <button
+                      type="button"
+                      onClick={handleOpenAddProduct}
+                      className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs inline-flex items-center gap-1.5 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Ajouter un produit</span>
+                    </button>
                   </div>
-                ))}
-            </div>
+                );
+              }
+
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {displayProducts.map((product) => {
+                    // Check stock status for this product
+                    const hasLowStock = product.recetteDeBase?.some(ri => {
+                      const ing = ingredients.find(i => i.id === ri.ingredientId);
+                      return ing && ing.stockActuel <= ing.seuilAlerte;
+                    });
+                    const isOutOfStock = product.recetteDeBase?.some(ri => {
+                      const ing = ingredients.find(i => i.id === ri.ingredientId);
+                      return ing && ing.stockActuel < ri.quantite;
+                    });
+
+                    return (
+                      <div
+                        key={product.id}
+                        onClick={() => handleProductClick(product)}
+                        className={`group bg-slate-900 border hover:border-amber-500/60 rounded-xl overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:shadow-amber-500/5 flex flex-col justify-between relative ${
+                          isOutOfStock ? 'border-rose-500/40 opacity-75' : 'border-slate-800'
+                        }`}
+                      >
+                        <div className="relative aspect-video w-full bg-slate-950 overflow-hidden">
+                          <img
+                            src={product.imageUrl}
+                            alt={product.nom}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                          
+                          {/* Price Tag */}
+                          <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-slate-950/80 backdrop-blur-md text-amber-400 font-bold text-xs font-mono">
+                            {formatCentimesToEuro(product.prixBaseCentimes)}
+                          </span>
+
+                          {/* Stock status badge */}
+                          {isOutOfStock ? (
+                            <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] bg-rose-500 text-white font-bold">
+                              Rupture Stock
+                            </span>
+                          ) : hasLowStock ? (
+                            <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] bg-amber-500/90 text-slate-950 font-bold">
+                              Stock Faible
+                            </span>
+                          ) : null}
+
+                          {/* Quick Edit Action Button */}
+                          <button
+                            type="button"
+                            title="Modifier ce produit"
+                            onClick={(e) => handleOpenEditProduct(product, e)}
+                            className="absolute top-2 right-2 p-1.5 rounded-lg bg-slate-900/80 hover:bg-amber-500 hover:text-slate-950 text-slate-300 backdrop-blur-md border border-slate-700/60 transition-colors shadow-sm"
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <div className="p-3">
+                          <h4 className="text-xs sm:text-sm font-bold text-white group-hover:text-amber-400 transition-colors line-clamp-1">
+                            {product.nom}
+                          </h4>
+                          <p className="text-[11px] text-slate-400 line-clamp-2 mt-1">
+                            {product.description}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Right Column: Ticket / Cart Summary */}
@@ -687,47 +892,292 @@ export const InteractiveSimulatorTab: React.FC<InteractiveSimulatorTabProps> = (
 
       {/* VIEW 3: GESTION DES STOCKS & RECETTES */}
       {subView === 'STOCKS' && (
-        <div className="space-y-4">
-          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-lg">
-            <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
-              <Layers className="w-5 h-5 text-amber-400" />
-              Nomenclature des Ingrédients & Déstockage Automatique
-            </h3>
-            <p className="text-xs sm:text-sm text-slate-400 mb-4">
-              Chaque burger ou extra vendu déduit instantanément et de façon immuable la quantité exacte d&apos;ingrédients en base SQLite Room.
-            </p>
+        <div className="space-y-6">
+          {/* Top KPI Cards & Action Bar */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-md">
+              <div className="flex items-center justify-between text-slate-400 text-xs">
+                <span>Références en Stock</span>
+                <Boxes className="w-4 h-4 text-amber-400" />
+              </div>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-2xl font-black font-mono text-white">{ingredients.length}</span>
+                <span className="text-xs text-slate-400 font-semibold">ingrédients suivis</span>
+              </div>
+              <div className="mt-2 text-[11px] text-slate-500">
+                Décomptés en temps réel à chaque encaissement
+              </div>
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {ingredients.map((ing) => {
-                const isLow = ing.stockActuel <= ing.seuilAlerte;
-                return (
-                  <div 
-                    key={ing.id} 
-                    className={`p-4 rounded-xl border transition-all ${
-                      isLow ? 'bg-rose-950/20 border-rose-500/50' : 'bg-slate-950 border-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <span className="text-xs font-bold text-white">{ing.nom}</span>
-                      {isLow && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-500 text-white font-bold animate-pulse">
+            <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-md">
+              <div className="flex items-center justify-between text-slate-400 text-xs">
+                <span>Alertes Seuil Critique</span>
+                <AlertCircle className={`w-4 h-4 ${ingredients.filter(i => i.stockActuel <= i.seuilAlerte).length > 0 ? 'text-rose-400 animate-pulse' : 'text-emerald-400'}`} />
+              </div>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className={`text-2xl font-black font-mono ${ingredients.filter(i => i.stockActuel <= i.seuilAlerte).length > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                  {ingredients.filter(i => i.stockActuel <= i.seuilAlerte).length}
+                </span>
+                <span className="text-xs text-slate-400 font-semibold">
+                  {ingredients.filter(i => i.stockActuel <= i.seuilAlerte).length > 0 ? 'ruptures imminentes' : 'stocks optimaux'}
+                </span>
+              </div>
+              <div className="mt-2 text-[11px] text-slate-500">
+                Seuil paramétrable par ingrédient
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-md">
+              <div className="flex items-center justify-between text-slate-400 text-xs">
+                <span>Valeur Estimée Réserve</span>
+                <DollarSign className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-2xl font-black font-mono text-emerald-400">
+                  {formatCentimesToEuro(
+                    ingredients.reduce((sum, i) => sum + (i.stockActuel * i.coutUnitaireCentimes), 0)
+                  )}
+                </span>
+                <span className="text-xs text-slate-400 font-semibold">HT valorisé</span>
+              </div>
+              <div className="mt-2 text-[11px] text-slate-500">
+                Calculé selon les coûts d&apos;achat unitaires
+              </div>
+            </div>
+          </div>
+
+          {/* Action Bar */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-wrap items-center justify-between gap-3 shadow-md">
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Layers className="w-5 h-5 text-amber-400" />
+                <span>Inventaire des Ingrédients & Matières Premières</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Cliquez sur les raccourcis (+10, +50) ou sur Ajuster pour modifier le stock et réapprovisionner.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleRestockAllCritical}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition-all active:scale-95"
+              >
+                <PackageCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Tout Réapprovisionner (+50)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsAddIngredientModalOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold shadow-md shadow-amber-500/10 transition-all active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Nouvel Ingrédient</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleOpenAddProduct}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 text-xs font-bold transition-all active:scale-95"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Nouveau Produit</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Ingredient Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            {ingredients.map((ing) => {
+              const isLow = ing.stockActuel <= ing.seuilAlerte;
+              // Find which products use this ingredient
+              const usedInProducts = products.filter(p => 
+                p.recetteDeBase?.some(r => r.ingredientId === ing.id)
+              );
+
+              return (
+                <div 
+                  key={ing.id} 
+                  className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${
+                    isLow 
+                      ? 'bg-rose-950/20 border-rose-500/50 shadow-md shadow-rose-950/20' 
+                      : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                  }`}
+                >
+                  <div>
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-1">
+                      <span className="text-xs font-bold text-white leading-snug">{ing.nom}</span>
+                      {isLow ? (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-500 text-white font-bold animate-pulse shrink-0">
                           Alerte Seuil
+                        </span>
+                      ) : (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-semibold shrink-0">
+                          En stock
                         </span>
                       )}
                     </div>
-                    <div className="mt-3 flex items-baseline gap-1">
-                      <span className="text-2xl font-black font-mono text-amber-400">
+
+                    {/* Stock Value */}
+                    <div className="mt-3 flex items-baseline gap-1.5">
+                      <span className={`text-2xl font-black font-mono ${isLow ? 'text-rose-400' : 'text-amber-400'}`}>
                         {ing.stockActuel}
                       </span>
                       <span className="text-xs text-slate-400 font-semibold">{ing.unite}</span>
                     </div>
-                    <div className="mt-2 text-[11px] text-slate-400 flex justify-between">
-                      <span>Seuil mini: {ing.seuilAlerte} {ing.unite}</span>
+
+                    {/* Mini Details */}
+                    <div className="mt-2 text-[11px] text-slate-400 flex justify-between border-t border-slate-800/80 pt-2 font-mono">
+                      <span>Seuil: {ing.seuilAlerte} {ing.unite}</span>
                       <span>Coût: {formatCentimesToEuro(ing.coutUnitaireCentimes)}</span>
                     </div>
+
+                    {/* Used in products chips */}
+                    {usedInProducts.length > 0 && (
+                      <div className="mt-2.5 pt-2 border-t border-slate-800/60">
+                        <div className="text-[10px] text-slate-500 font-semibold mb-1">Utilisé dans :</div>
+                        <div className="flex flex-wrap gap-1">
+                          {usedInProducts.slice(0, 3).map(p => (
+                            <span key={p.id} className="px-1.5 py-0.2 rounded text-[10px] bg-slate-950 text-slate-300 border border-slate-800 truncate max-w-full">
+                              {p.nom}
+                            </span>
+                          ))}
+                          {usedInProducts.length > 3 && (
+                            <span className="text-[10px] text-slate-500">+{usedInProducts.length - 3}</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                );
-              })}
+
+                  {/* Quick Action Buttons */}
+                  <div className="mt-4 pt-3 border-t border-slate-800/80 space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleQuickStockChange(ing.id, -5)}
+                        title="Retirer 5 unités (perte/consommation)"
+                        className="px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-mono font-bold transition-colors"
+                      >
+                        -5
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickStockChange(ing.id, 10)}
+                        title="Ajouter 10 unités"
+                        className="flex-1 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold transition-colors text-center"
+                      >
+                        +10
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickStockChange(ing.id, 50)}
+                        title="Ajouter 50 unités"
+                        className="flex-1 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold transition-colors text-center"
+                      >
+                        +50
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenStockModal(ing)}
+                      className="w-full py-1.5 rounded-lg bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-300 text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-slate-700/80 cursor-pointer"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      <span>Ajuster / Réappro</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Recipes & Consumption Matrix */}
+          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-lg space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span>Matrice des Recettes & Déstockage par Produit</span>
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Visualisez les ingrédients et quantités prélevés à chaque vente effectuée.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleOpenAddProduct}
+                className="text-xs text-amber-400 hover:underline font-bold flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Nouveau Produit</span>
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-800 text-slate-400 font-semibold uppercase text-[10px]">
+                    <th className="pb-3 pr-3">Produit Catalogue</th>
+                    <th className="pb-3 px-3">Prix Vente TTC</th>
+                    <th className="pb-3 px-3">Ingrédients Déstockés par Vente</th>
+                    <th className="pb-3 pl-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 font-sans text-xs">
+                  {products.map(prod => (
+                    <tr key={prod.id} className="hover:bg-slate-850/50">
+                      <td className="py-3 pr-3 font-bold text-white flex items-center gap-2">
+                        <img
+                          src={prod.imageUrl}
+                          alt={prod.nom}
+                          className="w-8 h-8 rounded-lg object-cover bg-slate-950 shrink-0"
+                        />
+                        <div>
+                          <div>{prod.nom}</div>
+                          <div className="text-[10px] text-slate-400 font-normal truncate max-w-xs">{prod.description}</div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 font-mono font-bold text-amber-400">
+                        {formatCentimesToEuro(prod.prixBaseCentimes)}
+                      </td>
+                      <td className="py-3 px-3">
+                        {prod.recetteDeBase && prod.recetteDeBase.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {prod.recetteDeBase.map(ri => {
+                              const ing = ingredients.find(i => i.id === ri.ingredientId);
+                              return (
+                                <span
+                                  key={ri.ingredientId}
+                                  className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800 text-[11px] font-mono flex items-center gap-1"
+                                >
+                                  <span className="text-amber-400 font-bold">{ri.quantite}x</span>
+                                  <span>{ing?.nom || 'Ingrédient'}</span>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <span className="text-slate-500 italic text-[11px]">Aucun ingrédient lié</span>
+                        )}
+                      </td>
+                      <td className="py-3 pl-3 text-right">
+                        <button
+                          type="button"
+                          onClick={(e) => handleOpenEditProduct(prod, e)}
+                          className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-300 text-xs font-semibold transition-colors"
+                        >
+                          Modifier
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -1073,6 +1523,48 @@ export const InteractiveSimulatorTab: React.FC<InteractiveSimulatorTabProps> = (
           </div>
         </div>
       )}
+
+      {/* MODAL 4: PRODUCT EDITOR (Créer / Modifier un produit) */}
+      <ProductEditorModal
+        isOpen={isProductModalOpen}
+        onClose={() => {
+          setIsProductModalOpen(false);
+          setEditingProduct(null);
+        }}
+        onSave={handleSaveProduct}
+        onDelete={onDeleteProduct}
+        editingProduct={editingProduct}
+        categories={categories}
+        ingredients={ingredients}
+        onOpenNewCategoryModal={() => setIsNewCategoryModalOpen(true)}
+      />
+
+      {/* MODAL 5: STOCK ADJUSTMENT & RESTOCK */}
+      <StockAdjustmentModal
+        isOpen={isStockModalOpen}
+        onClose={() => {
+          setIsStockModalOpen(false);
+          setEditingIngredient(null);
+        }}
+        ingredient={editingIngredient}
+        onSave={handleSaveStockAdjustment}
+        onDelete={onDeleteIngredient}
+      />
+
+      {/* MODAL 6: NEW INGREDIENT CREATION */}
+      <NewIngredientModal
+        isOpen={isAddIngredientModalOpen}
+        onClose={() => setIsAddIngredientModalOpen(false)}
+        onAdd={onAddIngredient}
+      />
+
+      {/* MODAL 7: NEW CATEGORY CREATION */}
+      <NewCategoryModal
+        isOpen={isNewCategoryModalOpen}
+        onClose={() => setIsNewCategoryModalOpen(false)}
+        onAdd={onAddCategory}
+        existingCount={categories.length}
+      />
     </div>
   );
 };

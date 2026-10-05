@@ -21,7 +21,7 @@ import {
   INITIAL_ORDERS,
   INITIAL_CASH_SESSION
 } from './data/mockData';
-import { OrderEntity, Ingredient, SyncEvent, AuditLog, OrderStatus } from './types/pos';
+import { OrderEntity, Ingredient, SyncEvent, AuditLog, OrderStatus, Product, Category } from './types/pos';
 import { CheckCircle2, Terminal, Code2, Rocket, ArrowRight } from 'lucide-react';
 
 export default function App() {
@@ -29,10 +29,38 @@ export default function App() {
   const [isOnline, setIsOnline] = useState<boolean>(true);
 
   // Live state for interactive simulator
-  const [categories] = useState(INITIAL_CATEGORIES);
-  const [products] = useState(INITIAL_PRODUCTS);
+  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
+  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [ingredients, setIngredients] = useState<Ingredient[]>(INITIAL_INGREDIENTS);
   const [orders, setOrders] = useState<OrderEntity[]>(INITIAL_ORDERS);
+
+  const handleAddProduct = (newProd: Product) => {
+    setProducts(prev => [newProd, ...prev]);
+  };
+
+  const handleUpdateProduct = (updated: Product) => {
+    setProducts(prev => prev.map(p => p.id === updated.id ? updated : p));
+  };
+
+  const handleDeleteProduct = (productId: string) => {
+    setProducts(prev => prev.filter(p => p.id !== productId));
+  };
+
+  const handleAddCategory = (newCat: Category) => {
+    setCategories(prev => [...prev, newCat]);
+  };
+
+  const handleAddIngredient = (newIng: Ingredient) => {
+    setIngredients(prev => [...prev, newIng]);
+  };
+
+  const handleUpdateIngredient = (updated: Ingredient) => {
+    setIngredients(prev => prev.map(i => i.id === updated.id ? updated : i));
+  };
+
+  const handleDeleteIngredient = (ingredientId: string) => {
+    setIngredients(prev => prev.filter(i => i.id !== ingredientId));
+  };
   
   // Initial sync queue events
   const [syncEvents, setSyncEvents] = useState<SyncEvent[]>([
@@ -158,6 +186,13 @@ export default function App() {
             onOrderStatusUpdated={handleOrderStatusUpdated}
             onSyncQueueProcessed={handleSyncQueueProcessed}
             onUpdateIngredients={setIngredients}
+            onAddProduct={handleAddProduct}
+            onUpdateProduct={handleUpdateProduct}
+            onDeleteProduct={handleDeleteProduct}
+            onAddCategory={handleAddCategory}
+            onAddIngredient={handleAddIngredient}
+            onUpdateIngredient={handleUpdateIngredient}
+            onDeleteIngredient={handleDeleteIngredient}
           />
         )}
       </main>
