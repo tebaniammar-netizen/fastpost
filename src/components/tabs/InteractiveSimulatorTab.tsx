@@ -27,7 +27,8 @@ import {
   PackageCheck,
   RotateCcw,
   Sparkles,
-  Tv
+  Tv,
+  Globe
 } from 'lucide-react';
 import { 
   Product, 
@@ -71,6 +72,7 @@ interface InteractiveSimulatorTabProps {
   onAddIngredient: (newIng: Ingredient) => void;
   onUpdateIngredient: (updated: Ingredient) => void;
   onDeleteIngredient: (ingredientId: string) => void;
+  onOpenShowcase?: () => void;
 }
 
 export const InteractiveSimulatorTab: React.FC<InteractiveSimulatorTabProps> = ({
@@ -91,7 +93,8 @@ export const InteractiveSimulatorTab: React.FC<InteractiveSimulatorTabProps> = (
   onAddCategory,
   onAddIngredient,
   onUpdateIngredient,
-  onDeleteIngredient
+  onDeleteIngredient,
+  onOpenShowcase
 }) => {
   const [subView, setSubView] = useState<'POS' | 'KDS' | 'CUSTOMER_DISPLAY' | 'STOCKS' | 'SYNC_OUTBOX' | 'AUDIT'>('POS');
   const [selectedCategory, setSelectedCategory] = useState<string>(categories[0]?.id || 'cat-1');
@@ -457,9 +460,21 @@ export const InteractiveSimulatorTab: React.FC<InteractiveSimulatorTabProps> = (
           </button>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-slate-400">
-          <span className="w-2 h-2 rounded-full bg-emerald-400" />
-          <span>Session Caisse #01 Ouverte</span>
+        <div className="flex items-center gap-3 text-xs text-slate-400">
+          {onOpenShowcase && (
+            <button
+              onClick={onOpenShowcase}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-all hover:scale-105 cursor-pointer shadow-sm"
+              title="Voir la présentation commerciale et les tarifs digabloPos"
+            >
+              <Globe className="w-3.5 h-3.5 text-amber-400" />
+              <span>🌐 Site Vitrine digabloPos</span>
+            </button>
+          )}
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span className="hidden sm:inline">Session Caisse #01 Ouverte</span>
+          </div>
         </div>
       </div>
 

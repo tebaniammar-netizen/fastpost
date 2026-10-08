@@ -16,3 +16,7 @@ local.properties
 .cxx/
 *.apk
 *.aab
+
+# Temporary extraction caches
+extracted-digablo/
+digablo-reference/

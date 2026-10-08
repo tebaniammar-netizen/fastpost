@@ -12,7 +12,8 @@ import {
   Flame,
   FileCode,
   FolderDown,
-  Download
+  Download,
+  Globe
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -33,6 +34,7 @@ export const Header: React.FC<HeaderProps> = ({
   onDirectDownloadZip
 }) => {
   const tabs = [
+    { id: 'showcase', label: '🌐 Site Vitrine Commercial (digabloPos)', icon: Globe, highlight: true },
     { id: 'simulator', label: '📱 SIMULATEUR TACTILE (Caisse & Cuisine)', icon: Smartphone, highlight: true },
     { id: 'guide', label: '📦 Télécharger le Projet (.ZIP)', icon: FolderDown, highlight: true },
     { id: 'architecture', label: '1. Architecture & Sync', icon: Layers },

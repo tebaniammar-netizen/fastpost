@@ -24,9 +24,19 @@ import {
 } from './data/mockData';
 import { OrderEntity, Ingredient, SyncEvent, AuditLog, OrderStatus, Product, Category } from './types/pos';
 import { CheckCircle2, Terminal, Code2, Rocket, ArrowRight } from 'lucide-react';
+import { Navbar as DigabloNavbar } from './components/digablo/Navbar';
+import { HomePage as DigabloHomePage } from './components/digablo/HomePage';
+import { FeaturesPage as DigabloFeaturesPage } from './components/digablo/FeaturesPage';
+import { UseCasesPage as DigabloUseCasesPage } from './components/digablo/UseCasesPage';
+import { PricingPage as DigabloPricingPage } from './components/digablo/PricingPage';
+import { ComparisonPage as DigabloComparisonPage } from './components/digablo/ComparisonPage';
+import { BlogPage as DigabloBlogPage } from './components/digablo/BlogPage';
+import { DownloadPage as DigabloDownloadPage } from './components/digablo/DownloadPage';
+import { Footer as DigabloFooter } from './components/digablo/Footer';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('simulator');
+  const [digabloPage, setDigabloPage] = useState<string>('home');
   const [isOnline, setIsOnline] = useState<boolean>(true);
 
   // Check if standalone secondary screen mode (TV mode) is requested in URL
@@ -245,6 +255,63 @@ export default function App() {
       />
 
       <main className="flex-1 px-4 sm:px-6 lg:px-8 py-4">
+        {activeTab === 'showcase' && (
+          <div className="space-y-6 -mx-4 sm:-mx-6 lg:-mx-8 -my-4">
+            <DigabloNavbar 
+              currentPage={digabloPage}
+              setCurrentPage={setDigabloPage}
+              onOpenLiveSimulator={() => setActiveTab('simulator')}
+            />
+            <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+              {digabloPage === 'home' && (
+                <DigabloHomePage 
+                  setCurrentPage={setDigabloPage}
+                  onOpenLiveSimulator={() => setActiveTab('simulator')}
+                />
+              )}
+              {digabloPage === 'features' && (
+                <DigabloFeaturesPage 
+                  setCurrentPage={setDigabloPage}
+                  onOpenLiveSimulator={() => setActiveTab('simulator')}
+                />
+              )}
+              {digabloPage === 'use-cases' && (
+                <DigabloUseCasesPage 
+                  setCurrentPage={setDigabloPage}
+                  onOpenLiveSimulator={() => setActiveTab('simulator')}
+                />
+              )}
+              {digabloPage === 'pricing' && (
+                <DigabloPricingPage 
+                  setCurrentPage={setDigabloPage}
+                  onOpenLiveSimulator={() => setActiveTab('simulator')}
+                />
+              )}
+              {digabloPage === 'compare' && (
+                <DigabloComparisonPage 
+                  setCurrentPage={setDigabloPage}
+                  onOpenLiveSimulator={() => setActiveTab('simulator')}
+                />
+              )}
+              {digabloPage === 'blog' && (
+                <DigabloBlogPage 
+                  setCurrentPage={setDigabloPage}
+                  onOpenLiveSimulator={() => setActiveTab('simulator')}
+                />
+              )}
+              {digabloPage === 'download' && (
+                <DigabloDownloadPage 
+                  onOpenLiveSimulator={() => setActiveTab('simulator')}
+                  onGoToCodeExplorer={() => setActiveTab('code')}
+                />
+              )}
+            </div>
+            <DigabloFooter 
+              setCurrentPage={setDigabloPage}
+              onOpenLiveSimulator={() => setActiveTab('simulator')}
+            />
+          </div>
+        )}
         {activeTab === 'architecture' && <ArchitectureTab />}
         {activeTab === 'database' && <DatabaseSchemaTab />}
         {activeTab === 'code' && <CodeExplorerTab />}
@@ -276,6 +343,7 @@ export default function App() {
             onAddIngredient={handleAddIngredient}
             onUpdateIngredient={handleUpdateIngredient}
             onDeleteIngredient={handleDeleteIngredient}
+            onOpenShowcase={() => setActiveTab('showcase')}
           />
         )}
       </main>
