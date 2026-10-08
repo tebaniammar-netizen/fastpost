@@ -147,3 +147,82 @@ export interface AuditLog {
   entiteId: string;
   details: string;
 }
+
+export interface PosSettings {
+  // 1. Établissement
+  storeName: string;
+  storeAddress: string;
+  storePhone: string;
+  storeEmail: string;
+  storeSiret: string;
+  storeTvaNumber: string;
+  receiptHeaderMessage: string;
+  receiptFooterMessage: string;
+  
+  // 2. Financier & Devises
+  currency: 'EUR' | 'USD' | 'FCFA' | 'MAD' | 'DZD' | 'GBP' | 'CHF';
+  currencySymbol: string;
+  defaultTvaRateSurPlace: number;
+  defaultTvaRateEmporter: number;
+  defaultTvaRateBoissonsAlcool: number;
+  autoRoundCash: boolean;
+
+  // 3. Matériel & Impression ESC/POS
+  printerType: 'BLUETOOTH' | 'NETWORK_WIFI' | 'USB';
+  printerIpAddress: string;
+  paperWidthMm: 80 | 58;
+  autoPrintReceiptOnPayment: boolean;
+  printKitchenTicketOnPayment: boolean;
+  autoOpenCashDrawer: boolean;
+  numberOfReceiptCopies: number;
+
+  // 4. Écran Client Déporté (TV)
+  customerDisplayChimeEnabled: boolean;
+  customerDisplayMarqueeText: string;
+  customerDisplayTheme: 'DARK_MODERN' | 'VIBRANT_GOLD' | 'CLEAN_MINIMAL';
+
+  // 5. Sécurité & PIN Superviseur
+  supervisorPin: string;
+  requirePinForDiscount: boolean;
+  requirePinForRefund: boolean;
+  requirePinForOpenDrawerWithoutSale: boolean;
+  requirePinForZReport: boolean;
+
+  // 6. Données & Sync
+  syncFrequencySeconds: number;
+  soundEffectsEnabled: boolean;
+}
+
+export const DEFAULT_POS_SETTINGS: PosSettings = {
+  storeName: 'FastFood Gourmet POS',
+  storeAddress: '12 Rue de la République, 75001 Paris',
+  storePhone: '+33 1 42 68 00 00',
+  storeEmail: 'contact@fastfoodgourmet.fr',
+  storeSiret: '849 201 928 00014',
+  storeTvaNumber: 'FR 32 849201928',
+  receiptHeaderMessage: 'Bienvenue au FastFood Gourmet !',
+  receiptFooterMessage: 'Merci pour votre confiance. À très bientôt !',
+  currency: 'EUR',
+  currencySymbol: '€',
+  defaultTvaRateSurPlace: 10.0,
+  defaultTvaRateEmporter: 5.5,
+  defaultTvaRateBoissonsAlcool: 20.0,
+  autoRoundCash: false,
+  printerType: 'NETWORK_WIFI',
+  printerIpAddress: '192.168.1.100:9100',
+  paperWidthMm: 80,
+  autoPrintReceiptOnPayment: true,
+  printKitchenTicketOnPayment: true,
+  autoOpenCashDrawer: true,
+  numberOfReceiptCopies: 1,
+  customerDisplayChimeEnabled: true,
+  customerDisplayMarqueeText: '🍔 Nos recettes sont préparées à la commande avec des ingrédients frais',
+  customerDisplayTheme: 'DARK_MODERN',
+  supervisorPin: '1234',
+  requirePinForDiscount: true,
+  requirePinForRefund: true,
+  requirePinForOpenDrawerWithoutSale: true,
+  requirePinForZReport: true,
+  syncFrequencySeconds: 0,
+  soundEffectsEnabled: true
+};

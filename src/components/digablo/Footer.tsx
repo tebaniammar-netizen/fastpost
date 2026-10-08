@@ -88,6 +88,14 @@ export const Footer: React.FC<FooterProps> = ({
               </li>
               <li>
                 <button 
+                  onClick={() => setCurrentPage('settings')} 
+                  className="hover:text-amber-400 transition-colors text-left text-amber-400/90 font-semibold"
+                >
+                  ⚙️ Paramètres & Matériel
+                </button>
+              </li>
+              <li>
+                <button 
                   onClick={onOpenLiveSimulator} 
                   className="text-amber-400 hover:underline font-bold text-left flex items-center gap-1"
                 >

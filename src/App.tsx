@@ -22,7 +22,17 @@ import {
   INITIAL_ORDERS,
   INITIAL_CASH_SESSION
 } from './data/mockData';
-import { OrderEntity, Ingredient, SyncEvent, AuditLog, OrderStatus, Product, Category } from './types/pos';
+import { 
+  OrderEntity, 
+  Ingredient, 
+  SyncEvent, 
+  AuditLog, 
+  OrderStatus, 
+  Product, 
+  Category,
+  PosSettings,
+  DEFAULT_POS_SETTINGS
+} from './types/pos';
 import { CheckCircle2, Terminal, Code2, Rocket, ArrowRight } from 'lucide-react';
 import { Navbar as DigabloNavbar } from './components/digablo/Navbar';
 import { HomePage as DigabloHomePage } from './components/digablo/HomePage';
@@ -33,11 +43,36 @@ import { ComparisonPage as DigabloComparisonPage } from './components/digablo/Co
 import { BlogPage as DigabloBlogPage } from './components/digablo/BlogPage';
 import { DownloadPage as DigabloDownloadPage } from './components/digablo/DownloadPage';
 import { Footer as DigabloFooter } from './components/digablo/Footer';
+import { SettingsView } from './components/simulator/SettingsView';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('simulator');
   const [digabloPage, setDigabloPage] = useState<string>('home');
   const [isOnline, setIsOnline] = useState<boolean>(true);
+
+  // Persistent POS & Hardware Settings
+  const [posSettings, setPosSettings] = useState<PosSettings>(() => {
+    if (typeof window === 'undefined') return DEFAULT_POS_SETTINGS;
+    try {
+      const saved = localStorage.getItem('fastfood_pos_settings');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return DEFAULT_POS_SETTINGS;
+  });
+
+  const handleUpdateSettings = (newSettings: PosSettings) => {
+    setPosSettings(newSettings);
+    try {
+      localStorage.setItem('fastfood_pos_settings', JSON.stringify(newSettings));
+    } catch {}
+  };
+
+  const handleResetSettings = () => {
+    setPosSettings(DEFAULT_POS_SETTINGS);
+    try {
+      localStorage.removeItem('fastfood_pos_settings');
+    } catch {}
+  };
 
   // Check if standalone secondary screen mode (TV mode) is requested in URL
   const [isStandaloneTv, setIsStandaloneTv] = useState<boolean>(() => {
@@ -305,6 +340,15 @@ export default function App() {
                   onGoToCodeExplorer={() => setActiveTab('code')}
                 />
               )}
+              {digabloPage === 'settings' && (
+                <div className="py-8">
+                  <SettingsView
+                    settings={posSettings}
+                    onUpdateSettings={handleUpdateSettings}
+                    onResetSettings={handleResetSettings}
+                  />
+                </div>
+              )}
             </div>
             <DigabloFooter 
               setCurrentPage={setDigabloPage}
@@ -323,6 +367,15 @@ export default function App() {
             onGoToCodeExplorer={() => setActiveTab('code')}
           />
         )}
+        {activeTab === 'settings' && (
+          <div className="max-w-5xl mx-auto py-4">
+            <SettingsView
+              settings={posSettings}
+              onUpdateSettings={handleUpdateSettings}
+              onResetSettings={handleResetSettings}
+            />
+          </div>
+        )}
         {activeTab === 'simulator' && (
           <InteractiveSimulatorTab
             categories={categories}
@@ -332,6 +385,9 @@ export default function App() {
             syncEvents={syncEvents}
             auditLogs={auditLogs}
             isOnline={isOnline}
+            posSettings={posSettings}
+            onUpdateSettings={handleUpdateSettings}
+            onResetSettings={handleResetSettings}
             onNewOrderCreated={handleNewOrderCreated}
             onOrderStatusUpdated={handleOrderStatusUpdated}
             onSyncQueueProcessed={handleSyncQueueProcessed}

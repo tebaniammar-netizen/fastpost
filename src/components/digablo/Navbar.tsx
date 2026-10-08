@@ -37,6 +37,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'compare', label: 'Comparatif' },
     { id: 'download', label: 'Télécharger' },
     { id: 'blog', label: 'Blog & Guides' },
+    { id: 'settings', label: '⚙️ Paramètres' },
   ];
 
   const handleNavClick = (pageId: string) => {

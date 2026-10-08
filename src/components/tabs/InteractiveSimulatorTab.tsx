@@ -28,7 +28,8 @@ import {
   RotateCcw,
   Sparkles,
   Tv,
-  Globe
+  Globe,
+  Settings
 } from 'lucide-react';
 import { 
   Product, 
@@ -40,7 +41,8 @@ import {
   OrderType, 
   PaymentMethod, 
   OrderStatus,
-  Category 
+  Category,
+  PosSettings
 } from '../../types/pos';
 import { 
   formatCentimesToEuro, 
@@ -52,6 +54,7 @@ import { StockAdjustmentModal } from '../simulator/StockAdjustmentModal';
 import { NewIngredientModal } from '../simulator/NewIngredientModal';
 import { NewCategoryModal } from '../simulator/NewCategoryModal';
 import { CustomerDisplayScreen } from '../simulator/CustomerDisplayScreen';
+import { SettingsView } from '../simulator/SettingsView';
 
 interface InteractiveSimulatorTabProps {
   categories: Category[];
@@ -61,6 +64,9 @@ interface InteractiveSimulatorTabProps {
   syncEvents: SyncEvent[];
   auditLogs: AuditLog[];
   isOnline: boolean;
+  posSettings: PosSettings;
+  onUpdateSettings: (newSettings: PosSettings) => void;
+  onResetSettings: () => void;
   onNewOrderCreated: (order: OrderEntity, events: SyncEvent[], audit: AuditLog[]) => void;
   onOrderStatusUpdated: (orderId: string, newStatus: OrderStatus) => void;
   onSyncQueueProcessed: () => void;
@@ -83,6 +89,9 @@ export const InteractiveSimulatorTab: React.FC<InteractiveSimulatorTabProps> = (
   syncEvents,
   auditLogs,
   isOnline,
+  posSettings,
+  onUpdateSettings,
+  onResetSettings,
   onNewOrderCreated,
   onOrderStatusUpdated,
   onSyncQueueProcessed,
@@ -96,7 +105,7 @@ export const InteractiveSimulatorTab: React.FC<InteractiveSimulatorTabProps> = (
   onDeleteIngredient,
   onOpenShowcase
 }) => {
-  const [subView, setSubView] = useState<'POS' | 'KDS' | 'CUSTOMER_DISPLAY' | 'STOCKS' | 'SYNC_OUTBOX' | 'AUDIT'>('POS');
+  const [subView, setSubView] = useState<'POS' | 'KDS' | 'CUSTOMER_DISPLAY' | 'STOCKS' | 'SYNC_OUTBOX' | 'AUDIT' | 'SETTINGS'>('POS');
   const [selectedCategory, setSelectedCategory] = useState<string>(categories[0]?.id || 'cat-1');
   const [cart, setCart] = useState<CartLineItem[]>([]);
   const [orderType, setOrderType] = useState<OrderType>('SUR_PLACE');
@@ -241,12 +250,12 @@ export const InteractiveSimulatorTab: React.FC<InteractiveSimulatorTabProps> = (
 
   // Apply discount with supervisor PIN validation
   const handleApplyDiscount = () => {
-    if (supervisorPin === '1234') {
+    if (supervisorPin === posSettings.supervisorPin) {
       setDiscountCentimes(200); // 2.00 € de remise autorisée
       setIsSupervisorAuthOpen(false);
       setSupervisorPin('');
     } else {
-      alert('Code PIN Superviseur incorrect (Entrez 1234 pour cette démo).');
+      alert(`Code PIN Superviseur incorrect (Entrez ${posSettings.supervisorPin} ou modifiez-le dans les Paramètres).`);
     }
   };
 
@@ -457,6 +466,15 @@ export const InteractiveSimulatorTab: React.FC<InteractiveSimulatorTabProps> = (
           >
             <Lock className="w-4 h-4" />
             <span>Audit & Sécurité</span>
+          </button>
+          <button
+            onClick={() => setSubView('SETTINGS')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              subView === 'SETTINGS' ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            <span>⚙️ Paramètres</span>
           </button>
         </div>
 
@@ -1312,6 +1330,15 @@ export const InteractiveSimulatorTab: React.FC<InteractiveSimulatorTabProps> = (
             </div>
           </div>
         </div>
+      )}
+
+      {/* VIEW 6: PARAMÈTRES DE LA CAISSE */}
+      {subView === 'SETTINGS' && (
+        <SettingsView
+          settings={posSettings}
+          onUpdateSettings={onUpdateSettings}
+          onResetSettings={onResetSettings}
+        />
       )}
 
       {/* MODAL 1: PRODUCT CUSTOMIZATION (Variantes & Extras) */}

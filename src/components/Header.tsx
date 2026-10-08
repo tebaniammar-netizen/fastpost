@@ -13,7 +13,8 @@ import {
   FileCode,
   FolderDown,
   Download,
-  Globe
+  Globe,
+  Settings
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -36,6 +37,7 @@ export const Header: React.FC<HeaderProps> = ({
   const tabs = [
     { id: 'showcase', label: '🌐 Site Vitrine Commercial (digabloPos)', icon: Globe, highlight: true },
     { id: 'simulator', label: '📱 SIMULATEUR TACTILE (Caisse & Cuisine)', icon: Smartphone, highlight: true },
+    { id: 'settings', label: '⚙️ Paramètres Caisse & Matériel', icon: Settings, highlight: true },
     { id: 'guide', label: '📦 Télécharger le Projet (.ZIP)', icon: FolderDown, highlight: true },
     { id: 'architecture', label: '1. Architecture & Sync', icon: Layers },
     { id: 'database', label: '2. Schéma Room SQLite', icon: Database },
